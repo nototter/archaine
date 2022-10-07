@@ -171,6 +171,17 @@ class modules:
             main TCP socket client
             """
 
+            try:
+                import socket
+            except ImportError:
+                print("[!] socket(s) required for this")
+
+            mainSock = socket.socket(socket.AF_INET, socket.SOCK_STREAM) # generate tcp socket
+
+            mainSock.bind((args[1], int(args[2])))
+
+            
+
 
             
     class dns:
