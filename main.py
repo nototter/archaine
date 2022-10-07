@@ -110,14 +110,45 @@ class modules:
     """
     class dns:
         def start(args:list):
-            print(args)
-        def add_entry(args:list):
-            print(args[1])
-        def help():
-            return """DNS server to reroute people to ur server"""
+            try:
+                import os
+            except ImportError:
+                print("[!] unable to import os")
+            
+            a = essensials.sanitized_input("[?] this plugin requires DNSMasq and runs it's daemon, confirm? [Y/n]").lower()
 
-    class replicate:
-        def site(args:list):
+            if a == "y":
+                os.system("systemctl start dnsmasq")
+                print("[!] started")
+                return True
+            else:
+                print("[X] skipped")
+                return False
+
+        def add_entry(args:list):
+            file_data = None
+            domain = args[1]
+            ip = args[2]
+
+            try:
+                with open("/etc/dnsmasq.conf", "r") as f:
+                    file_data = f.read().split("\n")
+            except FileNotFoundError:
+                print("[!] /etc/dnsmasq.conf not found!")
+                return
+            
+            try:
+                with open("/etc/dnsmasq.conf", "a") as f:
+                    f.write("address {}/{}\n".format(domain, ip))
+                    f.flush()
+            except FileNotFoundError:
+                print("[!] /etc/dnsmasq.conf not found!")
+                return
+
+            print("[+] DNS entry added")
+
+    class clone:
+        def cloneSite(args:list):
             try:
                 import httpx
             except ImportError: # httpx not available
@@ -152,8 +183,8 @@ class sysVar:
             "help": "add a dns entry to the dns server"
         },
 
-        "replicate": {
-            "module": modules.replicate.site,
+        "cloneSite": {
+            "module": modules.clone.cloneSite,
             "help": "download a site's HTML"
         }
     }
