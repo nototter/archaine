@@ -1,4 +1,5 @@
 import modules.plugin as plugin
+from os import system
 import sys
 
 class colors:
@@ -127,14 +128,23 @@ class modules:
 
         def add_entry(args:list):
             file_data = None
-            domain = args[1]
-            ip = args[2]
+
+            try:
+                domain = args[1]
+                ip = args[2]
+            except IndexError:
+                print("[!] not enough args; dns-entry (domain) (server redirect ip)")
+                return False
 
             try:
                 with open("/etc/dnsmasq.conf", "r") as f:
                     file_data = f.read().split("\n")
             except FileNotFoundError:
                 print("[!] /etc/dnsmasq.conf not found!")
+                return
+
+            if "address {}/{}\n".format(domain, ip) in file_data: #sanity check
+                print("[!] entry already added!")
                 return
             
             try:
@@ -175,7 +185,7 @@ class sysVar:
     modules = { # built in modules
         "dns": {
             "module": modules.dns.start,
-            "help": modules.dns.help()
+            "help": "start DNSmasq daemon"
         },
 
         "dns-entry": {
@@ -219,7 +229,7 @@ if __name__ == "__main__":
             sysVar.modules["{} ({}'s plugin)".format(executable, plugins[1][p][0])]["module"] = None # set module as None to show it's not ours
 
     while True:
-        c = essensials.sanitized_input("\nalpine#>", q=True) # q=True to quit if ctrl+c
+        c = essensials.sanitized_input("\nalpine#> ", q=True) # q=True to quit if ctrl+c
 
         if c == "help":
             for module in sysVar.modules: # cycle through each
