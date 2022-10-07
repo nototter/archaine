@@ -1,5 +1,5 @@
-from os import system
 import modules.plugin as plugin
+import sys
 
 class colors:
     """
