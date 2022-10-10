@@ -1,8 +1,7 @@
 """
 example alpine plugin
 
-you could have as many defs and classes as you want, aslong as you have a help
-help must be outside a class!!!! or else it wont work
+you could have as many defs and classes as you want, aslong as you have a config and put your executables in a list
 
 all args will be in a list
 """

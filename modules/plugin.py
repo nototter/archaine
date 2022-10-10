@@ -17,11 +17,15 @@ def load(folder="plugins"):
 
             plugins[item] = importlib.import_module(f'{folder}.{item}')
 
-            r[item] = (f'{folder}.{item}', plugins[item].functions(), plugins[item])
+            try:
+                r[item] = (f'{item}.py', plugins[item].functions(), plugins[item])
+            except AttributeError: # plugin script didnt have a functions() module
+                print("{} doesn't have a \"functions()\" definition! contact plugin developer to add one; skipping for now...")
+                continue
         
     return (plugins, r)
 
-def function(target, arg=False, plugin=None):
+def function(target, arg, plugin):
 
     if plugin == None:
         err = 0

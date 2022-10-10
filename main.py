@@ -1,8 +1,14 @@
+"""
+PLEASE use this for educational purposes ONLY
+i am not responsible for your bad deeds
+- otter
+"""
 import modules.plugin as plugin
 from os import system
 import threading
 import logging
 from time import sleep
+from sys import exit, stdout
 
 log = logging.getLogger('werkzeug')
 log.disabled = True
@@ -16,7 +22,15 @@ class colors:
     Module made by @venaxyt on Github
     https://github.com/venaxyt/gratient
     """
+
+    def bold(text):
+        return f"\033[1;m{text}\033[0m"
+
     def sunset(text):
+
+        # due to scapy messing with ansi colors it will stay like this
+        return text 
+
         system(""); faded = ""
         for line in text.splitlines():
             red = 0
@@ -286,7 +300,7 @@ while True:
             except socket.gaierror: # failed to connect
                 print("[!] client ip doesnt exist")
                 return
-            except ConnectionRefusedError:
+            except ConnectionRefusedError: # V
                 print("[!] machine active, but was unable to connect")
                 return
 
@@ -403,22 +417,22 @@ class sysVar:
 
         "cloneSite": {
             "module": modules.clone.cloneSite,
-            "help": "download a site's HTML"
+            "help": "download a site's HTML; cloneSite (domain)"
         },
 
         "rs-download": {
             "module": modules.reverse_shell.initDownload,
-            "help": "start http flask server to download file from"
+            "help": "start reverse shell http flask server to download file from; rs-download (server ip) (server port)"
         },
 
         "rs-probe": {
             "module": modules.reverse_shell.initSocket,
-            "help": "probe to client ip and attempt to connect"
+            "help": "attempt to connect to infected IP with our reverse shell; rs-probe (client's ip) (client's port)"
         },
 
         "rs-dstop": {
             "module": modules.reverse_shell.stopFlask,
-            "help": "stop http flask server"
+            "help": "stop reverse shell http flask server"
         },
     }
 
@@ -444,7 +458,13 @@ if __name__ == "__main__":
                             \/_/                     
 
     a more user friendly (but worse) version of metasploit
+                "All for one and one for all!"
     """))
+
+    # to prevent plugins to do funny stuff
+
+    save_stdout = stdout
+    stdout = None
 
     for p in plugins[1]: # for plugin in plugins list
         for executable in plugins[1][p][1][0]: # for every executable in the plugin's executable list
@@ -455,6 +475,8 @@ if __name__ == "__main__":
             except KeyError: # command's help not in configurationfile
                 raise KeyError("\"{}\"'s command \"{}\" doesn't have a help key pair in it's configuration".format(plugins[1][p][0], executable))
             sysVar.modules["{} ({}'s plugin)".format(executable, plugins[1][p][0])]["module"] = None # set module as None to show it's not ours
+
+    stdout = save_stdout
 
     while True:
         c = essensials.sanitized_input("\nalpine#> ", q=False) # q=True to quit if ctrl+c
@@ -469,20 +491,33 @@ if __name__ == "__main__":
                 print(f"{module}: {a}")
                 continue # go back to input
 
-        elif c == "exit": quit()
+        elif c == "exit" or c == "quit": exit(0)
 
         try:
-            sysVar.modules[c.split(" ")[0]]["module"](c.split(" ")) # try getting it from built in modules
+            f = sysVar.modules[c.split(" ")[0]]["module"] # try getting it from built in modules
+            args = (c.split(" "),) # set our args
+
+            a = threading.Thread(target=f, args=args, daemon=True) # generate in new thread to prevent errors on main thread
+            a.start() # start said thread
+
+            try:
+                a.join() # wait for thread to finish
+            except KeyboardInterrupt:
+                print("ctrl+c") # ctrl+c caught while plugin was running
+
+            continue # back to input
+
         except KeyError: # if not in modules:
             for p in plugins[1]: # for plugin in plugins list
                 for executable in plugins[1][p][1][0]: # for every executable in the plugin's executable list
                     if c.split(' ')[0] == executable: # if our choice in plugin's executable path
+                        plg = plugins[1][p][2] # chosen plugin
+                        args = (c.split(' ')[0], c.split(' '), plg) # generate function args
 
-                        try: # dont even know about this try except
-                            plugin.function(c.split(' ')[0], c.split(' '), plugin=plugins[1][p][2]) # execute
-                            # args:
-                            # 1: the command / our choice, now being used to get the function
-                            # 2: the args of the command
-                            # 3: module to pull the function from
-                        except:
-                            raise # raise if error (no point)
+                        a = threading.Thread(target=plugin.function, args=args, daemon=True) # generate in new thread to prevent errors on main thread
+                        a.start() # start said thread
+
+                        try:
+                            a.join() # wait for thread to finish
+                        except KeyboardInterrupt:
+                            print("ctrl+c") # ctrl+c caught while plugin was running
