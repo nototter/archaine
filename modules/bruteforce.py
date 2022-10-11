@@ -1,6 +1,7 @@
 import httpx
 import hashlib
 import threading
+from concurrent.futures import ThreadPoolExecuter
 
 """
 TODO: enter = show info (tries, current hash on thread #, )
@@ -40,14 +41,10 @@ class system:
         a = system.chunk(wordlist, round(len(wordlist) / threads))
 
         threadlist = []
-        
-        for x in a:
-            threadlist.append(threading.Thread(target=function, args=(target, x), daemon=True))
-
-        for thread in threadlist: thread.start()
 
         try:
-            for thread in threadlist: thread.join()
+            with ThreadPoolExecuter(max_threads=threads) as pool:
+                for x in a: pool.submit(function, target, x)
         except KeyboardInterrupt:
             system.finished = True
             print("ctrl+c")
