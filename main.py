@@ -14,7 +14,10 @@ log = logging.getLogger('werkzeug')
 log.disabled = True
 
 """
-TODO: make plugin 
+TODO: make wifi hacking plugin (maybe)
+TODO: make routersploit type plugin
+TODO: make CVE viewer plugin (maybe)
+TODO: make vulnerability finder in network plugin (highly doubt but maybe)
 """
 
 class colors:
@@ -398,7 +401,7 @@ while True:
                 print("success")
                 return
             except IndexError: # VVVVVVV
-                print("[!] not enough arguments; replicate (url) (output file) (proxy (0 for none))")
+                print("[!] not enough arguments; cloneSite (url) (output file) (proxy (0 for none))")
 
 class sysVar:
     """
@@ -446,7 +449,7 @@ class sysVar:
 if __name__ == "__main__":
     plugins = plugin.load(folder="modules") # load
 
-    print(colors.sunset(r"""
+    print(colors.bold(r"""
                 ___                                  
                /\_ \            __                   
            __  \//\ \    _____ /\_\    ___      __   
