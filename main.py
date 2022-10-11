@@ -18,6 +18,8 @@ TODO: make wifi hacking plugin (maybe)
 TODO: make routersploit type plugin
 TODO: make CVE viewer plugin (maybe)
 TODO: make vulnerability finder in network plugin (highly doubt but maybe)
+
+>>> TODO: bruteforce suite
 """
 
 class colors:
