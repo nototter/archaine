@@ -472,6 +472,7 @@ if __name__ == "__main__":
     stdout = None
 
     for p in plugins[1]: # for plugin in plugins list
+        if len(plugins[1][p][1][0]) == 0: continue # sanity check
         for executable in plugins[1][p][1][0]: # for every executable in the plugin's executable list
             sysVar.modules["{} ({}'s plugin)".format(executable, plugins[1][p][0])] = {} # create dict
 
