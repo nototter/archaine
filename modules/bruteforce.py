@@ -37,14 +37,16 @@ class system:
 
         return thread_List
 
-    def hash_crack(function:object, wordlist:list, target:str, threads=5):
+    def run(function:object, wordlist:list, target:str, threads=5):
         a = system.chunk(wordlist, round(len(wordlist) / threads))
 
         threadlist = []
 
         try:
+            # TODO: stop using thread pool executer
             with ThreadPoolExecuter(max_threads=threads) as pool:
-                for x in a: pool.submit(function, target, x)
+                # x is chunk
+                for x in a: pool.submit(hash.base, target, x, function)
         except KeyboardInterrupt:
             system.finished = True
             print("ctrl+c")
@@ -68,62 +70,39 @@ class system:
         
 
 class hash:
-    def sha1(target:str, wordlist:list):
-        """
-        SHA1 cracking
-        """
-
-    def sha224(target:str, wordlist:list):
-        """
-        SHA224 cracking
-        """
-
-        stdout_hash = ''.join([target[x] for x in range(system.hash_amount)]) + "..." #minimize characters used
-        
-        for hash in system.list_to_dict(wordlist):
+    def base(target:str, wordlist:list, func):
+        for i in wordlist:
             if system.finished: return
-            encrypted = hashlib.sha224(hash.encode('ascii')).hexdigest() #encrypt
+            encrypted = func(i.encode('ascii')).hexdigest()
 
-            if str(encrypted) == target: # if the newly encrypted hash matches our target
-                print(f"[!] found hash: {hash} [{encrypted}]")
+            if encrypted == target:
+                print("[!] found hash: {}:{}".format(i,target))
                 system.finished = True
-                return hash
+                return i
             else:
-                print(f"[X] {hash} != {stdout_hash}")
-                pass
+                continue
 
-    def sha256(target:str, wordlist:list):
-        """
-        SHA256 cracking
-        """
-        
-        stdout_hash = ''.join([target[x] for x in range(system.hash_amount)]) + "..." # minimized version of the hash to reduce amount of screen taken
-        
-        for hash in system.list_to_dict(wordlist):
-            if system.finished: return
-            encrypted = hashlib.sha256(hash.encode('ascii')).hexdigest() #encrypt
+def sha1(args:list):
+    try:
+        target = args[1]
+        wordlist = args[2]
+        threads = args[3]
+    except:
+        print("sha1 (target) (wordlist file) (threads)")
+        return
 
-            if str(encrypted) == target:
-                if system.finished: return
-                print(f"[!] found hash: {hash} [{encrypted}]")
-                system.finished = True
-                return hash
-            else:
-                if system.finished: return
-                print(f"[X] {hash} != {stdout_hash}")
-                pass
-    
-    def sha384(target:str, wordlist:list):
-        """
-        SHA384 cracking
-        """
+    system.run(hashlib.sha1, wordlist, target, threads=int(threads))
 
-    def sha512(target:str, wordlist:list):
-        """
-        SHA512 cracking
-        """
+def sha224(args:list):
+    try:
+        target = args[1]
+        wordlist = args[2]
+        threads = args[3]
+    except:
+        print("sha224 (target) (wordlist file) (threads)")
+        return
 
-
+    system.run(hashlib.sha224, wordlist, target, threads=int(threads))
 
 def functions():
     return (
