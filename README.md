@@ -1,9 +1,11 @@
 # NOTICE
+i was renamed from alpine to archaine because of overlapping
+
 only use for educational purposes or networks you are allowed to "hack" in
 
 everything is a work in progress right now
 
-# alpine
+# info
 a more user friendly (but slightly worse) version of metasploit made in python3
 
 optional modules:
