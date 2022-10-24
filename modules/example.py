@@ -49,4 +49,4 @@ def functions():
     """
     put your executable functions here and your configuration
     """
-    return (['hello', 'bonjour'], example1.config)
+    return example1.config

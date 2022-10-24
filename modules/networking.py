@@ -3,6 +3,7 @@ from re import X
 import datetime
 import logging
 import time
+from random import randint, gauss
 from concurrent.futures.thread import ThreadPoolExecutor
 logging.getLogger("scapy.runtime").setLevel(logging.ERROR)
 # importing scapy messes cololr up
@@ -60,6 +61,9 @@ class _GetchWindows:
 
 
 class essensials:
+    packetTimeout = 0.75
+    spoofedSourceIP = "10.10.10.10"
+    spoofedSourceMAC = "01:02:03:04:05:06"
     def handler():
         """handle enter and ctrl+c"""
 
@@ -101,16 +105,14 @@ class network:
                 """ARP network scanning"""
                 alive = []
 
-                s_ip, s_mac = spoof[0], spoof[1]
-
                 resp = []
                 
                 for ip in ip_list:
                     if not stats.threadsActive: return False
 
                     resp.append(time.time())
-                    pkt = Ether(dst ="ff:ff:ff:ff:ff:ff", src=s_mac) / ARP(pdst = ip)
-                    mac = srp(pkt, timeout = 0.5, verbose = False)
+                    pkt = Ether(dst ="ff:ff:ff:ff:ff:ff", src=essensials.spoofedSourceMAC) / ARP(pdst = ip)
+                    mac = srp(pkt, timeout = essensials.packetTimeout, verbose = False)
                     resp.append(time.time())
 
                     try:
@@ -138,16 +140,14 @@ class network:
                 alive = []
                 resp = []
 
-                s_ip, s_mac = spoof[0], spoof[1]
-
                 for ip in ip_list:
                     for port in ports:
                         if not stats.threadsActive: return False
 
                         resp.append(time.time())
                         try:
-                            p = IP(dst=ip, src=s_ip) / TCP(sport=RandShort(), dport=port, flags="S")
-                            SYNACK = sr1(p, verbose=0, timeout=0.25)
+                            p = IP(dst=ip, src=essensials.spoofedSourceIP) / TCP(sport=RandShort(), dport=port, flags="S")
+                            SYNACK = sr1(p, verbose=0, timeout=essensials.packetTimeout)
                         except KeyboardInterrupt:
                             return False
                         resp.append(time.time())
@@ -166,8 +166,6 @@ class network:
 
             def udp(ip_list, spoof, ports=[443], seq=1888, v=False):
                 """UDP network scanning"""
-                s_ip, s_mac = spoof[0], spoof[1]
-
                 alive = []
                 resp = []
 
@@ -176,7 +174,7 @@ class network:
                         if not stats.threadsActive: return False
 
                         resp.append(time.time())
-                        pkt = sr1(IP(dst=ip, src=s_ip)/UDP(dport=port), timeout=0.25, verbose=0)
+                        pkt = sr1(IP(dst=ip, src=essensials.spoofedSourceIP)/UDP(dport=port), timeout=essensials.packetTimeout, verbose=0)
                         resp.append(time.time())
 
                         if pkt == None:
@@ -196,17 +194,15 @@ class network:
                 alive = []
                 resp = []
 
-                s_ip, s_mac = spoof[0], spoof[1]
-
                 for ip in ip_list:
                     if not stats.threadsActive: return False
 
                     resp.append(time.time())
-                    icmp = IP(ttl=10, dst=ip, src=s_ip)/ICMP()
+                    icmp = IP(ttl=round(gauss(70,10)), dst=ip)/ICMP()
                     resp.append(time.time())
 
 
-                    pkt = sr1(icmp, timeout=0.1, verbose=0)
+                    pkt = sr1(icmp, timeout=essensials.packetTimeout, verbose=0)
                     
                     if pkt == None:
                         continue
@@ -225,12 +221,10 @@ class network:
 
                 open, closed = [], []
 
-                s_ip, s_mac = spoof[0], spoof[1]
-
                 for port in ports:
                     if not stats.threadsActive: return False
 
-                    pkt = sr1(IP(dst=ip, src=s_ip)/UDP(dport=port), timeout=0.25, verbose=0)
+                    pkt = sr1(IP(dst=ip, src=essensials.spoofedSourceIP)/UDP(dport=port), timeout=essensials.packetTimeout, verbose=0)
 
                     if pkt == None:
                         closed.append(port)
@@ -248,14 +242,12 @@ class network:
             def stealth(ip, spoof, ports:list):
                 """SYN-STEALTH port scanning"""
 
-                s_ip, s_mac = spoof[0], spoof[1]
-
                 open, closed, filtered = [], [], []
 
                 for port in ports:
                     if not stats.threadsActive: return False
 
-                    x = sr1(IP(dst=ip, src=None)/TCP(sport=RandShort(),dport=port,flags="S"),timeout=1, verbose=0) # main SYN packet
+                    x = sr1(IP(dst=ip, src=None)/TCP(sport=RandShort(),dport=port,flags="S"),timeout=essensials.packetTimeout, verbose=0) # main SYN packet
 
                     if x == None:
                         #print(f"{ip}:{port} is filtered")
@@ -264,7 +256,7 @@ class network:
 
                     elif x.haslayer(TCP):
                         if x.getlayer(TCP).flags == 0x12:
-                            sr(IP(dst=ip, src=None)/TCP(sport=RandShort(),dport=port,flags="R"),timeout=1, verbose=0) # SYN-RST
+                            sr(IP(dst=ip, src=None)/TCP(sport=RandShort(),dport=port,flags="R"),timeout=essensials.packetTimeout, verbose=0) # SYN-RST
                             print(f"{ip}:{port}/SYN-TCP is open")
                             open.append(port)
 
@@ -291,12 +283,10 @@ class network:
 
                 open, closed, filtered = [], [], []
 
-                s_ip, s_mac = spoof[0], spoof[1]
-
                 for port in ports:
                     if not stats.threadsActive: return False
 
-                    pkt = sr1(IP(dst=ip, src=s_ip)/TCP(sport=RandShort(), dport=port, flags="S"), timeout=0.075, verbose=0)
+                    pkt = sr1(IP(dst=ip, src=essensials.spoofedSourceIP)/TCP(sport=RandShort(), dport=port, flags="S"), timeout=essensials.packetTimeout, verbose=0)
 
                     if pkt == None:
                         closed.append(port)
@@ -304,7 +294,7 @@ class network:
                         if pkt.getlayer(TCP).flags == 0x12:
                             print(f"{ip}:{port}/TCP is open")
 
-                            sr(IP(dst=ip, src=s_ip)/TCP(sport=RandShort(),dport=port,flags="AR"),timeout=0.075, verbose=0)
+                            sr(IP(dst=ip, src=essensials.spoofedSourceIP)/TCP(sport=RandShort(),dport=port,flags="AR"),timeout=essensials.packetTimeout, verbose=0)
 
                             open.append(port)
                         else:
@@ -322,12 +312,10 @@ class network:
 
                 open, closed, filtered = [], [], []
 
-                s_ip, s_mac = spoof[0], spoof[1]
-
                 for port in ports:
                     if not stats.threadsActive: return False
 
-                    x = sr1(IP(dst=ip, src=s_ip)/TCP(dport=port,flags="FPU"),timeout=0.5, verbose=0)
+                    x = sr1(IP(dst=ip, src=essensials.spoofedSourceIP)/TCP(dport=port,flags="FPU"),timeout=essensials.packetTimeout, verbose=0)
 
                     if x == None:
                         print(f"{ip}:{port}/TCP is open")
@@ -356,12 +344,10 @@ class network:
 
                 open, closed, filtered = [], [], []
 
-                s_ip, s_mac = spoof[0], spoof[1]
-
                 for port in ports:
                     if not stats.threadsActive: return False
 
-                    x = sr1(IP(dst=ip, src=s_ip)/TCP(dport=port,flags="F"),timeout=0.5, verbose=0)
+                    x = sr1(IP(dst=ip, src=essensials.spoofedSourceIP)/TCP(dport=port,flags="F"),timeout=essensials.packetTimeout, verbose=0)
 
                     if x == None:
                         print(f"{ip}:{port}/TCP is open")
@@ -388,12 +374,10 @@ class network:
 
                 open, closed, filtered = [], [], []
                 
-                s_ip, s_mac = spoof[0], spoof[1]
-
                 for port in ports:
                     if not stats.threadsActive: return False
 
-                    x = sr1(IP(dst=ip, src=s_ip)/TCP(dport=port,flags="A"),timeout=0.5, verbose=0)
+                    x = sr1(IP(dst=ip, src=essensials.spoofedSourceIP)/TCP(dport=port,flags="A"),timeout=essensials.packetTimeout, verbose=0)
 
                     if x == None:
                         continue
@@ -737,6 +721,18 @@ def tcpWinPortScan(args:list):
     stats.portsClosed.clear()
     stats.portsFiltered.clear()
 
+def setPacketTimeout(args:list):
+    essensials.packetTimeout = float(args[1])
+    print("ok")
+
+def setSpoofedMAC(args:list):
+    essensials.spoofedSourceMAC = str(args[1])
+    print("ok")
+
+def setSpoofedIP(args:list):
+    essensials.sourceIP = str(args[1])
+    print("ok")
+
 def functions():
     """
     put your executable functions here and your configuration
@@ -744,21 +740,7 @@ def functions():
     put ur imports here maybe
     """
 
-    return (
-        [ # executable
-            'arpHostScan',
-            'synHostScan',
-            'udpHostScan',
-            'pingHostScan',
-            'synPortScan',
-            'tcpWinPortScan',
-            'finPortScan',
-            'xmasPortScan',
-            'tcpPortScan',
-            'udpPortScan'
-        ],  
-
-        { # config
+    return { # config
         "arpHostScan": "ARP scan subnet; arpHostScan (subnet) (threads)",
         "synHostScan": "SYN scan subnet; synHostScan (subnet) (threads)",
         "udpHostScan": "UDP scan subnet; udpHostScan (subnet) (threads)",
@@ -769,5 +751,8 @@ def functions():
         'xmasPortScan': "TCP-XMAS port scan IP address; xmasPortScan (ip) (1-65535 or 80) (threads)",
         'tcpPortScan': "TCP-RAW port scan IP address; tcpPortScan (ip) (1-65535 or 80) (threads)",
         'udpPortScan': "UDP-RAW port scan IP address; udpPortScan (ip) (1-65535 or 80) (threads)",
+        'setPacketTimeout': "set packet recive timeout, decrease for faster scans, increase of more thorough scans",
+        'setSpoofedMAC': "set spoofed MAC address, circumvent some weird systems",
+        'setSpoofedIP': "set spoofed IPv4 address, circumvent some weird systems",
         }
-        )
+        

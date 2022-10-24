@@ -1,7 +1,8 @@
 import httpx
 import hashlib
 import threading
-from concurrent.futures import ThreadPoolExecuter
+from concurrent.futures import ThreadPoolExecutor
+import binascii
 
 """
 TODO: enter = show info (tries, current hash on thread #, )
@@ -44,14 +45,28 @@ class system:
 
         try:
             # TODO: stop using thread pool executer
-            with ThreadPoolExecuter(max_threads=threads) as pool:
+            with ThreadPoolExecutor(max_threads=threads) as pool:
                 # x is chunk
                 for x in a: pool.submit(hash.base, target, x, function)
         except KeyboardInterrupt:
             system.finished = True
             print("ctrl+c")
             return False
-        
+
+    def runALT(function:object, wordlist:list, target:str, threads=5):
+        a = system.chunk(wordlist, round(len(wordlist) / threads))
+
+        threadlist = []
+
+        try:
+            # TODO: stop using thread pool executer
+            with ThreadPoolExecutor(max_threads=threads) as pool:
+                # x is chunk
+                for x in a: pool.submit(function, target, x)
+        except KeyboardInterrupt:
+            system.finished = True
+            print("ctrl+c")
+            return False
 
     def chunk(lst:list, n:int):
         full = []
@@ -82,6 +97,18 @@ class hash:
             else:
                 continue
 
+    def md4(target:str, wordlist:list):
+        for i in wordlist:
+            if system.finished: return
+            encrypted = binascii.hexlify(hashlib.new('md4', i.encode('utf-16le')).digest())
+
+            if encrypted == target:
+                print("[!] found hash: {}:{}".format(i,target))
+                system.finished = True
+                return i
+            else:
+                continue
+
 def sha1(args:list):
     try:
         target = args[1]
@@ -104,10 +131,44 @@ def sha224(args:list):
 
     system.run(hashlib.sha224, wordlist, target, threads=int(threads))
 
-def functions():
-    return (
-        [],
-        {
+def sha384(args:list):
+    try:
+        target = args[1]
+        wordlist = args[2]
+        threads = args[3]
+    except:
+        print("sha384 (target) (wordlist file) (threads)")
+        return
 
+    system.run(hashlib.sha384, wordlist, target, threads=int(threads))
+
+def sha512(args:list):
+    try:
+        target = args[1]
+        wordlist = args[2]
+        threads = args[3]
+    except:
+        print("sha512 (target) (wordlist file) (threads)")
+        return
+
+    system.run(hashlib.sha512, wordlist, target, threads=int(threads))
+
+def md4(args:list):
+    try:
+        target = args[1]
+        wordlist = args[2]
+        threads = args[3]
+    except:
+        print("md4 (target) (wordlist file) (threads)")
+        return
+
+    system.runALT(hash.md4, wordlist, target, threads=int(threads))
+
+def functions():
+    return {
+            "sha1": "sha1 crack; sha1 (target) (wordlist file) (threads)",
+            "sha224": "sha224 crack; sha224 (target) (wordlist file) (threads)",
+            "sha384": "sha384 crack; sha384 (target) (wordlist file) (threads)",
+            "sha512": "sha512 crack; sha512 (target) (wordlist file) (threads)",
+            "md4": "md4 crack; md4 (target) (wordlist file) (threads)",
         }
-    )
