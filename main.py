@@ -71,106 +71,12 @@ class essensials:
         except:
             return False
 
-class modules:
-    """
-    built in scripts and stuff
-    """
-    class dns:
-        def start(args:list):
-            """
-            glorified "systemctl start dnsmasq"
-            """
-            try:
-                import os
-            except ImportError:
-                print("[!] unable to import os")
-            
-            a = essensials.sanitized_input("[?] this plugin requires DNSMasq and runs it's daemon, confirm? [Y/n]").lower() # just in case you dont have dnsmasq
-
-            if a == "y":
-                os.system("systemctl restart dnsmasq") # restart because yes
-                print("[!] started")
-                return True
-            else: # if n or anything else skip cuz invalid
-                print("[X] skipped")
-                return False
-
-        def add_entry(args:list):
-            """
-            add a DNS redirect entry to dnsmasq
-            """
-            file_data = None # dnsmasq.conf filedata
-
-            try:
-                domain = args[1] # check if args needed are given
-                ip = args[2]
-            except IndexError:
-                print("[!] not enough args; dns-entry (domain) (server redirect ip)")
-                return False
-
-            try:
-                with open("/etc/dnsmasq.conf", "r") as f:
-                    file_data = f.read().split("\n") # read and put in variable to use later
-            except FileNotFoundError: # if dnsmasq.conf doesnt exist
-                print("[!] /etc/dnsmasq.conf not found!") # notify
-                return
-
-            if "address {}/{}\n".format(domain, ip) in file_data: #sanity check
-                print("[!] entry already added!")
-                return
-            
-            try:
-                with open("/etc/dnsmasq.conf", "a") as f:
-                    f.write("address {}/{}\n".format(domain, ip))
-                    f.flush() # add our entry
-            except FileNotFoundError: # if dnsmasq.conf was deleted in those microseconds somehow
-                print("[!] /etc/dnsmasq.conf not found!") # notify
-                return
-
-            print("[+] DNS entry added")
-
-    class clone:
-        def cloneSite(args:list):
-            try:
-                import httpx
-            except ImportError: # httpx not available
-                print("[!] HTTPX needed for this module; pip install httpx")
-                return
-
-            if args[3] != "0": # if proxy given
-                proxy = {"http": args[3].split(":")} # set our proxy to that
-            else:
-                proxy = {} # empty
-
-            try:
-                with open(args[2], "w", encoding='utf-8') as f:
-                    f.write(httpx.get(args[1], headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:105.0) Gecko/20100101 Firefox/105.0"}, proxies=proxy).text) # make the request and instantly write to file
-                    f.flush() # flush just in case
-                print("success")
-                return
-            except IndexError: # VVVVVVV
-                print("[!] not enough arguments; cloneSite (url) (output file) (proxy (0 for none))")
 
 class sysVar:
     """
     system variables
     """
-    modules = { # built in modules
-        "dns": {
-            "module": modules.dns.start,
-            "help": "start DNSmasq daemon"
-        },
-
-        "dns-entry": {
-            "module": modules.dns.add_entry,
-            "help": "add a dns entry to the dns server"
-        },
-
-        "cloneSite": {
-            "module": modules.clone.cloneSite,
-            "help": "download a site's HTML; cloneSite (domain)"
-        },
-    }
+    modules = {}
 
     runnable_plugins = [] # variable name
     rsSite = False # site running bool
@@ -209,7 +115,7 @@ if __name__ == "__main__":
             sysVar.modules["{} ({}'s plugin)".format(executable, plugins[1][p][0])] = {} # create dict
 
             try:
-                sysVar.modules["{} ({}'s plugin)".format(executable, plugins[1][p][0])]["help"] = plugins[1][p][1][executable].strip() # define help
+                sysVar.modules["{} ({}'s plugin)".format(executable, plugins[1][p][0])]["help"] = (plugins[1][p][1][executable].strip(), plugins[1][p][0]) # define help
             except KeyError: # command's help not in configurationfile
                 raise KeyError("{}'s command {} doesn't have a help key pair in it's configuration".format(plugins[1][p][0], executable))
             sysVar.modules["{} ({}'s plugin)".format(executable, plugins[1][p][0])]["module"] = None # set module as None to show it's not ours
@@ -223,11 +129,31 @@ if __name__ == "__main__":
             print("\nuse \"exit\" to leave archaine")
             continue
 
-        elif c == "help":
-            for module in sysVar.modules: # cycle through each
-                a = sysVar.modules[module]['help'] # get all help from modules
-                print(f"{module}: {a}")
-                continue # go back to input
+        elif c.split(" ")[0] == "help":
+            try:
+                abc = c.split(" ")[1] # try to get first arg
+            except IndexError:
+                abc = None # no args given
+
+            if abc is None:
+                for module in sysVar.modules: # cycle through each
+                    a = sysVar.modules[module]['help'][0] # get all help from modules
+                    print(f"{module}: {a}")
+                    continue # go back to input
+            else:
+                for module in sysVar.modules: # cycle through each
+                    help = sysVar.modules[module]['help'][0] # get all help from modules
+                    parent = sysVar.modules[module]['help'][1] # get all help from modules
+
+                    if c.split(" ")[1] == parent: # if its what we're looking for
+                        print(f"{module}: {help}")
+                        continue
+                    else:
+                        if c.split(" ")[1].strip(".py") == parent.strip(".py"): # if its what we're looking for but just without the .py
+                            print(f"{module}: {help}")
+                            continue
+                        else:
+                            pass # no exist
 
         elif c == "exit" or c == "quit": exit(0)
 

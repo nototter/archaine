@@ -20,7 +20,7 @@ def load(folder="plugins"):
             try:
                 r[item] = (f'{item}.py', plugins[item].functions(), plugins[item])
             except AttributeError: # plugin script didnt have a functions() module
-                print("{} doesn't have a \"functions()\" definition, contact plugin developer to add one; skipping for now...")
+                print("{}.py doesn't have a \"functions()\" definition, contact plugin developer to add one; skipping for now...".format(item))
                 continue
         
     return (plugins, r)
