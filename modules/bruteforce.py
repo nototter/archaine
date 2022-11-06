@@ -11,11 +11,66 @@ TODO: sha1-512, ntlm, etc cracking
 TODO: finish online endpoint cracking
 """
 
-class online:
-    def endpoint(url, headers, data, json):
+class onlineCrack:
+    def __init__(self, useSession=True):
+        if useSession:
+            self.session = httpx.Client()
+        else:
+            self.session = None
+
+    def endpoint(self, wordlist, requestType='GET', success=200, *args, **kwargs):
         """
-        temp
+        requestType = GET, HEAD, or POST (defaults to get)
+        
+        if success kwarg is an integer, it will check the request status code
+        else if success kwarg is a string, it will check the request response
+        
+        if it matches success kwarg, return a tuple of items
+
+        replace password key with &&&&, it will replace it automatically
         """
+
+        if self.session is None:
+            manager = httpx
+        else:
+            manager = self.session
+
+        try:
+            kwargsData = kwargs["data"] # backups
+        except KeyError:
+            kwargsData = None
+
+        try:
+            kwargsJson = kwargs["json"] # backups
+        except KeyError:
+            kwargsData = None
+
+
+        for pwd in wordlist:
+
+            if kwargsData is not None:
+                if "&&&&" in kwargsData:
+                    kwargs["data"] = kwargsData.replace("&&&&", pwd)
+            if kwargsJson is not None:
+                for key in kwargsJson:
+                    if "&&&&" in kwargsJson[key]:
+                        kwargs["json"][key] = kwargsJson[key].replace("&&&&", pwd)
+
+
+            if requestType.upper() == 'GET': request = manager.get(args, kwargs)
+            elif requestType.upper() == 'POST': request = manager.post(args, kwargs)
+            elif requestType.upper() == 'HEAD': request = manager.head(args, kwargs)
+
+            if type(success) == int:
+                if request.status_code == success:
+                    break
+
+            elif type(success) == str:
+                if success in request.text:
+                    break
+
+        return ()
+
 
 class system:
     hash = []
