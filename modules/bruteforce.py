@@ -3,6 +3,7 @@ import hashlib
 import threading
 from concurrent.futures import ThreadPoolExecutor
 import binascii
+import json
 
 """
 TODO: enter = show info (tries, current hash on thread #, )
@@ -18,7 +19,7 @@ class onlineCrack:
         else:
             self.session = None
 
-    def endpoint(self, wordlist, requestType='GET', success=200, *args, **kwargs):
+    def endpoint(self, wordlist, *args, requestType='GET', success=200, verbose=True, **kwargs):
         """
         requestType = GET, HEAD, or POST (defaults to get)
         
@@ -28,6 +29,8 @@ class onlineCrack:
         if it matches success kwarg, return a tuple of items
 
         replace password key with &&&&, it will replace it automatically
+
+        example: bruteforce.onlineCrack(useSession=True).endpoint([str(x) for x in string.ascii_letters], "http://127.0.0.1:5000", requestType="POST", success=200, json={"password": "&&&&"})
         """
 
         if self.session is None:
@@ -43,7 +46,7 @@ class onlineCrack:
         try:
             kwargsJson = kwargs["json"] # backups
         except KeyError:
-            kwargsData = None
+            kwargsJson = None
 
 
         for pwd in wordlist:
@@ -56,20 +59,24 @@ class onlineCrack:
                     if "&&&&" in kwargsJson[key]:
                         kwargs["json"][key] = kwargsJson[key].replace("&&&&", pwd)
 
-
-            if requestType.upper() == 'GET': request = manager.get(args, kwargs)
-            elif requestType.upper() == 'POST': request = manager.post(args, kwargs)
-            elif requestType.upper() == 'HEAD': request = manager.head(args, kwargs)
+            if requestType.upper() == 'GET': request = manager.get(*args, **kwargs)
+            elif requestType.upper() == 'POST': request = manager.post(*args, **kwargs)
+            elif requestType.upper() == 'HEAD': request = manager.head(*args, **kwargs)
+            else: # default to post
+                request = manager.post(*args, **kwargs)
 
             if type(success) == int:
                 if request.status_code == success:
-                    break
+                    return (pwd, request)
+                else:
+                    if verbose: print("[X] {}:{}:{}".format(request.url, pwd, request.status_code))
 
             elif type(success) == str:
                 if success in request.text:
-                    break
+                    return (pwd, request)
+                else:
+                    if verbose: print("[X] {}:{}:{}".format(request.url, pwd, request.status_code))
 
-        return ()
 
 
 class system:
@@ -219,6 +226,37 @@ def md4(args:list):
 
     system.runALT(hash.md4, wordlist, target, threads=int(threads))
 
+def onlineBrute(args:list):
+    threadList = []
+
+    try:
+        url = args[1]
+        _json = args[2]
+        requestType = args[3]
+        wordlist = args[4]
+        success = args[5]
+        threads = args[6]
+    except:
+        print("onlineBrute (url) (json) (wordlist file)")
+        return
+
+    try:
+        success = int(success) # check if it's status code or not
+    except:
+        pass
+    
+    
+    for l in system.chunk(open(wordlist, "r").read().split(), int(threads)):
+        threadList.append(threading.Thread(target=onlineCrack(useSession=True).endpoint, args=(l, url,), kwargs={"requestType":requestType.upper(), "success":success, "json":json.loads(_json)}))
+
+    for thread in threadList:
+        thread.start()
+
+    for thread in threadList:
+        thread.join()
+
+    #onlineCrack(useSession=True).endpoint(l, url, requestType=requestType.upper(), success=200, json=json.loads(_json))
+
 def functions():
     return {
             "sha1": "sha1 crack; sha1 (target) (wordlist file) (threads)",
@@ -226,4 +264,5 @@ def functions():
             "sha384": "sha384 crack; sha384 (target) (wordlist file) (threads)",
             "sha512": "sha512 crack; sha512 (target) (wordlist file) (threads)",
             "md4": "md4 crack; md4 (target) (wordlist file) (threads)",
+            "onlineBrute": "spam an http endpoint with a bunch of login requests, until we get our desired response; onlineBrute (url) (json data with password replaced with &&&& and no spaces) (GET, HEAD, or POST) (wordlist file) (success string or int) (threads)"
         }
