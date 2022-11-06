@@ -4,7 +4,7 @@ import socketserver
 
 class Handler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
-        self.dir = "./activeInjects"
+        self.dir = "./modules/activeInjects"
         super().__init__(*args, directory=self.dir, **kwargs)
     def log_message(self, format, *args):
         return

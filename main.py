@@ -2,14 +2,11 @@
 PLEASE use this for educational purposes ONLY
 i am not responsible for your bad deeds
 - otter
-
-DEV BRANCH
 """
 import modules.plugin as plugin
 from os import system
 import threading
 import logging
-from time import sleep
 from sys import exit, stdout
 
 log = logging.getLogger('werkzeug')
@@ -77,15 +74,6 @@ class sysVar:
     system variables
     """
     modules = {}
-
-    runnable_plugins = [] # variable name
-    rsSite = False # site running bool
-    rsAllow = False # allow shutdown
-    rsSitePort = None # set previously given site port
-    rsSiteNotified = False # for the shutdown thing
-    activeThreads = [] # variable name
-    TCP_IP = None
-    TCP_PORT = None # set our reverse shell vars
 
 if __name__ == "__main__":
     plugins = plugin.load(folder="modules") # load

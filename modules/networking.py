@@ -76,6 +76,50 @@ class essensials:
                 stats.threadsActive = False
                 return
 
+    def writeHandler(file, hostsUP, startTime, threads, subnet, isHosts:bool=True, coolHTML:bool=False):
+        with open(file, "w") as w:
+            if isHosts:
+                if not coolHTML: filedata = """
+len hosts UP: {}
+hosts UP:
+{}
+script started at: {}
+script ended at: {}
+threads: {}
+ip range: {}
+len scanned ips: {}
+            """.format(
+                len(hostsUP),
+                '\n'.join(hostsUP),
+                startTime,
+                datetime.datetime.now(),
+                threads,
+                subnet[0] + " - " + subnet[-1],
+                len(subnet)
+            )
+            else:
+                if not coolHTML: filedata = """
+len ports OPEN: {}
+ports OPEN:
+{}
+script started at: {}
+script ended at: {}
+threads: {}
+ip scanned: {}
+len scanned ports: {}
+            """.format(
+                len(hostsUP),
+                '\n'.join(hostsUP),
+                startTime,
+                datetime.datetime.now(),
+                threads,
+                subnet,
+                len(subnet)
+            )
+            w.write(filedata)
+
+            w.flush()
+
 class network:
     """
     class of networking stuffs
@@ -422,6 +466,11 @@ def arpHostScan(args:list):
 
     print("{} hosts up ({}s)".format(len(stats.hostsUP), datetime.datetime.now() - start))
 
+    try:
+        essensials.writeHandler(args[3], stats.hostsUP, start, threads, subnet)
+    except IndexError:
+        pass
+
     stats.hostsUP.clear()
 
 def synHostScan(args:list):
@@ -448,6 +497,11 @@ def synHostScan(args:list):
 
     print("{} hosts up ({}s)".format(len(stats.hostsUP), datetime.datetime.now() - start))
     
+    try:
+        essensials.writeHandler(args[3], stats.hostsUP, start, threads, subnet)
+    except IndexError:
+        pass
+
     stats.hostsUP.clear()
 
 def udpHostScan(args:list):
@@ -474,6 +528,11 @@ def udpHostScan(args:list):
 
     print("{} hosts up ({}s)".format(len(stats.hostsUP), datetime.datetime.now() - start))
     
+    try:
+        essensials.writeHandler(args[3], stats.hostsUP, start, threads, subnet)
+    except IndexError:
+        pass
+
     stats.hostsUP.clear()
 
 def pingHostScan(args:list):
@@ -500,6 +559,11 @@ def pingHostScan(args:list):
 
     print("{} hosts up ({}s)".format(len(stats.hostsUP), datetime.datetime.now() - start))
     
+    try:
+        essensials.writeHandler(args[3], stats.hostsUP, start, threads, subnet)
+    except IndexError:
+        pass
+
     stats.hostsUP.clear()
 
 
@@ -537,6 +601,12 @@ def synPortScan(args:list):
                                                                         len(stats.portsFiltered), 
                                                                         datetime.datetime.now() - start))
     
+
+    try:
+        essensials.writeHandler(args[4], stats.portsOpen, start, threads, ip, isHosts=False)
+    except IndexError:
+        pass
+
     stats.portsOpen.clear()
     stats.portsClosed.clear()
     stats.portsFiltered.clear()
@@ -573,6 +643,12 @@ def udpPortScan(args:list):
                                                                         len(stats.portsFiltered), 
                                                                         datetime.datetime.now() - start))
     
+
+    try:
+        essensials.writeHandler(args[4], stats.portsOpen, start, threads, ip, isHosts=False)
+    except IndexError:
+        pass
+
     stats.portsOpen.clear()
     stats.portsClosed.clear()
     stats.portsFiltered.clear()
@@ -609,6 +685,11 @@ def tcpPortScan(args:list):
                                                                         len(stats.portsFiltered), 
                                                                         datetime.datetime.now() - start))
     
+    try:
+        essensials.writeHandler(args[4], stats.portsOpen, start, threads, ip, isHosts=False)
+    except IndexError:
+        pass
+
     stats.portsOpen.clear()
     stats.portsClosed.clear()
     stats.portsFiltered.clear()
@@ -645,6 +726,11 @@ def xmasPortScan(args:list):
                                                                         len(stats.portsFiltered), 
                                                                         datetime.datetime.now() - start))
     
+    try:
+        essensials.writeHandler(args[4], stats.portsOpen, start, threads, ip, isHosts=False)
+    except IndexError:
+        pass
+
     stats.portsOpen.clear()
     stats.portsClosed.clear()
     stats.portsFiltered.clear()
@@ -681,6 +767,11 @@ def finPortScan(args:list):
                                                                         len(stats.portsFiltered), 
                                                                         datetime.datetime.now() - start))
     
+    try:
+        essensials.writeHandler(args[4], stats.portsOpen, start, threads, ip, isHosts=False)
+    except IndexError:
+        pass
+
     stats.portsOpen.clear()
     stats.portsClosed.clear()
     stats.portsFiltered.clear()
@@ -717,6 +808,11 @@ def tcpWinPortScan(args:list):
                                                                         len(stats.portsFiltered), 
                                                                         datetime.datetime.now() - start))
     
+    try:
+        essensials.writeHandler(args[4], stats.portsOpen, start, threads, ip, isHosts=False)
+    except IndexError:
+        pass
+
     stats.portsOpen.clear()
     stats.portsClosed.clear()
     stats.portsFiltered.clear()
